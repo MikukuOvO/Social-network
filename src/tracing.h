@@ -92,8 +92,8 @@ void InitTracer(YAML::Node config)
   trace_sdk::BatchSpanProcessorOptions bspOpts{};
   opentelemetry::exporter::otlp::OtlpGrpcExporterOptions opts;
   opts.endpoint = config["otel"]["endpoint"].as<std::string>();
-  opts.use_ssl_credentials = true;
-  opts.ssl_credentials_cacert_as_string = "ssl-certificate";
+  // 禁用 SSL，避免加载证书
+  opts.use_ssl_credentials = false;
   auto exporter  = otlp::OtlpGrpcExporterFactory::Create(opts);
   auto processor = trace_sdk::BatchSpanProcessorFactory::Create(std::move(exporter), bspOpts);
   std::shared_ptr<trace_api::TracerProvider> provider =
@@ -106,14 +106,24 @@ void InitMetrics(YAML::Node config)
 {
   otlp::OtlpGrpcMetricExporterOptions opts;
   opts.endpoint = config["otel"]["endpoint"].as<std::string>();
-  opts.use_ssl_credentials = true;
-  opts.ssl_credentials_cacert_as_string = "ssl-certificate";
+  // 禁用 SSL，避免加载证书
+  opts.use_ssl_credentials = false;
   auto exporter = otlp::OtlpGrpcMetricExporterFactory::Create(opts);
+
   metric_sdk::PeriodicExportingMetricReaderOptions reader_options;
   reader_options.export_interval_millis = std::chrono::milliseconds(1000);
   reader_options.export_timeout_millis  = std::chrono::milliseconds(500);
   auto reader = metric_sdk::PeriodicExportingMetricReaderFactory::Create(std::move(exporter), reader_options);
-  auto context = metric_sdk::MeterContextFactory::Create();
+  
+  // Create an (empty) view registry.
+  auto view_registry = std::unique_ptr<opentelemetry::sdk::metrics::ViewRegistry>(
+      new opentelemetry::sdk::metrics::ViewRegistry());
+
+  // Create a resource with your desired service name.
+  auto resource = opentelemetry::sdk::resource::Resource::Create({{"service.name", "social-network"}});
+
+  // Pass both the view registry and resource.
+  auto context = metric_sdk::MeterContextFactory::Create(std::move(view_registry), resource);
   context->AddMetricReader(std::move(reader));
   auto u_provider = metric_sdk::MeterProviderFactory::Create(std::move(context));
   std::shared_ptr<opentelemetry::metrics::MeterProvider> provider(std::move(u_provider));
@@ -124,8 +134,8 @@ void InitLogger(YAML::Node config)
 {
   otlp::OtlpGrpcLogRecordExporterOptions opts;
   opts.endpoint = config["otel"]["endpoint"].as<std::string>();
-  opts.use_ssl_credentials = true;
-  opts.ssl_credentials_cacert_as_string = "ssl-certificate";
+  // 禁用 SSL，避免加载证书
+  opts.use_ssl_credentials = false;
   auto exporter  = otlp::OtlpGrpcLogRecordExporterFactory::Create(opts);
   auto processor = logs_sdk::SimpleLogRecordProcessorFactory::Create(std::move(exporter));
   std::shared_ptr<logs_api::LoggerProvider> provider(

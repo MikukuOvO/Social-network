@@ -108,5 +108,5 @@ cmake .. && make -j4 && make install
 # cd DeathStar/socialNetwork && mkdir build && cd build
 # cmake -DCMAKE_BUILD_TYPE=Debug .. && make -j4 && make install
 
-cd ~/social-network && rm -rf build && mkdir build && cd build
+cd ~/Social-network && rm -rf build && mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Debug .. && make -j4 && make install
