@@ -101,9 +101,29 @@ bool SocialGraphHandler::IsRedisReplicationEnabled() {
     return (_redis_primary_client_pool || _redis_replica_client_pool);
 }
 
+// Get Meter instance from MeterProvider
+opentelemetry::nostd::shared_ptr<opentelemetry::v1::metrics::Meter> GetMeter() {
+  auto meter_provider = opentelemetry::metrics::Provider::GetMeterProvider();
+  return meter_provider->GetMeter("social_network.social_graph", "1.0.0");
+}
+
 void SocialGraphHandler::Follow(
     int64_t req_id, int64_t user_id, int64_t followee_id,
     const std::map<std::string, std::string> &carrier) {
+
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("follow.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("follow.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "Follow"},
+      {"app", "SocialGraphService"}
+  });
+  // ----- Metrics -----
+
   // Initialize a span
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
@@ -299,11 +319,36 @@ void SocialGraphHandler::Follow(
   }
 
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "Follow"},
+      {"app", "SocialGraphService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
+
 }
 
 void SocialGraphHandler::Unfollow(
     int64_t req_id, int64_t user_id, int64_t followee_id,
     const std::map<std::string, std::string> &carrier) {
+
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("unfollow.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("unfollow.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "Unfollow"},
+      {"app", "SocialGraphService"}
+  });
+  // ----- Metrics -----
+
   // Initialize a span
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
@@ -481,11 +526,36 @@ void SocialGraphHandler::Unfollow(
   }
 
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "Unfollow"},
+      {"app", "SocialGraphService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
+
 }
 
 void SocialGraphHandler::GetFollowers(
     std::vector<int64_t> &_return, const int64_t req_id, const int64_t user_id,
     const std::map<std::string, std::string> &carrier) {
+
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("get_followers.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("get_followers.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "GetFollowers"},
+      {"app", "SocialGraphService"}
+  });
+  // ----- Metrics -----
+
   // Initialize a span
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
@@ -619,11 +689,36 @@ void SocialGraphHandler::GetFollowers(
     }
   }
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "GetFollowers"},
+      {"app", "SocialGraphService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
+
 }
 
 void SocialGraphHandler::GetFollowees(
     std::vector<int64_t> &_return, const int64_t req_id, const int64_t user_id,
     const std::map<std::string, std::string> &carrier) {
+  
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("get_followees.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("get_followees.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "GetFollowees"},
+      {"app", "SocialGraphService"}
+  });
+  // ----- Metrics -----
+
   // Initialize a span
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
@@ -764,11 +859,36 @@ void SocialGraphHandler::GetFollowees(
     }
   }
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "GetFollowees"},
+      {"app", "SocialGraphService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
+
 }
 
 void SocialGraphHandler::InsertUser(
     int64_t req_id, int64_t user_id,
     const std::map<std::string, std::string> &carrier) {
+
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("insert_user.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("insert_user.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "InsertUser"},
+      {"app", "SocialGraphService"}
+  });
+  // ----- Metrics -----
+
   // Initialize a span
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
@@ -820,12 +940,37 @@ void SocialGraphHandler::InsertUser(
   mongoc_collection_destroy(collection);
   mongoc_client_pool_push(_mongodb_client_pool, mongodb_client);
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "InsertUser"},
+      {"app", "SocialGraphService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
+
 }
 
 void SocialGraphHandler::FollowWithUsername(
     int64_t req_id, const std::string &user_name,
     const std::string &followee_name,
     const std::map<std::string, std::string> &carrier) {
+
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("follow_with_username.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("follow_with_username.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "FollowWithUsername"},
+      {"app", "SocialGraphService"}
+  });
+  // ----- Metrics -----
+
   // Initialize a span
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
@@ -894,12 +1039,37 @@ void SocialGraphHandler::FollowWithUsername(
     Follow(req_id, user_id, followee_id, writer_text_map);
   }
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "FollowWithUsername"},
+      {"app", "SocialGraphService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
+
 }
 
 void SocialGraphHandler::UnfollowWithUsername(
     int64_t req_id, const std::string &user_name,
     const std::string &followee_name,
     const std::map<std::string, std::string> &carrier) {
+  
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("unfollow_with_username.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("unfollow_with_username.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "UnfollowWithUsername"},
+      {"app", "SocialGraphService"}
+  });
+  // ----- Metrics -----
+
   // Initialize a span
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
@@ -971,6 +1141,17 @@ void SocialGraphHandler::UnfollowWithUsername(
     }
   }
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "UnfollowWithUsername"},
+      {"app", "SocialGraphService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
+
 }
 
 }  // namespace social_network

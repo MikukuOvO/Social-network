@@ -37,10 +37,30 @@ UserMentionHandler::UserMentionHandler(
   _mongodb_client_pool = mongodb_client_pool;
 }
 
+// Get Meter instance from MeterProvider
+opentelemetry::nostd::shared_ptr<opentelemetry::v1::metrics::Meter> GetMeter() {
+  auto meter_provider = opentelemetry::metrics::Provider::GetMeterProvider();
+  return meter_provider->GetMeter("social_network.user_mention", "1.0.0");
+}
+
 void UserMentionHandler::ComposeUserMentions(
     std::vector<UserMention> &_return, int64_t req_id,
     const std::vector<std::string> &usernames,
     const std::map<std::string, std::string> &carrier) {
+
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("compose_user_mentions.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("compose_user_mentions.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "ComposeUserMentions"},
+      {"app", "UserMentionService"}
+  });
+  // ----- Metrics -----
+
   // Initialize a span
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
@@ -229,6 +249,17 @@ void UserMentionHandler::ComposeUserMentions(
 
   _return = user_mentions;
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "ComposeUserMentions"},
+      {"app", "UserMentionService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
+
 }
 
 }  // namespace social_network

@@ -28,11 +28,31 @@ class MediaHandler : public MediaServiceIf {
  private:
 };
 
+// Get Meter instance from MeterProvider
+opentelemetry::nostd::shared_ptr<opentelemetry::v1::metrics::Meter> GetMeter() {
+  auto meter_provider = opentelemetry::metrics::Provider::GetMeterProvider();
+  return meter_provider->GetMeter("social_network.media", "1.0.0");
+}
+
 void MediaHandler::ComposeMedia(
     std::vector<Media> &_return, int64_t req_id,
     const std::vector<std::string> &media_types,
     const std::vector<int64_t> &media_ids,
     const std::map<std::string, std::string> &carrier) {
+
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("compose_media.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("compose_media.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "ComposeMedia"},
+      {"app", "MediaService"}
+  });
+  // ----- Metrics -----
+  
   // Initialize a span
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
@@ -58,6 +78,17 @@ void MediaHandler::ComposeMedia(
   }
 
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "ComposeMedia"},
+      {"app", "MediaService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
+
 }
 
 }  // namespace social_network

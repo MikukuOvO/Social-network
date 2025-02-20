@@ -358,11 +358,31 @@ void ComposePostHandler::_UploadHomeTimelineHelper(
   span->Finish();
 }
 
+// Get Meter instance from MeterProvider
+opentelemetry::nostd::shared_ptr<opentelemetry::v1::metrics::Meter> GetMeter() {
+  auto meter_provider = opentelemetry::metrics::Provider::GetMeterProvider();
+  return meter_provider->GetMeter("social_network.compose_post", "1.0.0");
+}
+
 void ComposePostHandler::ComposePost(
     const int64_t req_id, const std::string &username, int64_t user_id,
     const std::string &text, const std::vector<int64_t> &media_ids,
     const std::vector<std::string> &media_types, const PostType::type post_type,
     const std::map<std::string, std::string> &carrier) {
+  
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("compose_post.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("compose_post.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "ComposePost"},
+      {"app", "ComposePostService"}
+  });
+  // ----- Metrics -----
+  
   TextMapReader reader(carrier);
   auto parent_span = opentracing::Tracer::Global()->Extract(reader);
   auto span = opentracing::Tracer::Global()->StartSpan(
@@ -438,6 +458,17 @@ void ComposePostHandler::ComposePost(
   //   throw;
   // }
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "ComposePost"},
+      {"app", "ComposePostService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
+
 }
 
 }  // namespace social_network

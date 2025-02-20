@@ -115,11 +115,31 @@ UserHandler::UserHandler(std::mutex *thread_lock, const std::string &machine_id,
   _social_graph_client_pool = social_graph_client_pool;
 }
 
+// Get Meter instance from MeterProvider
+opentelemetry::nostd::shared_ptr<opentelemetry::v1::metrics::Meter> GetMeter() {
+  auto meter_provider = opentelemetry::metrics::Provider::GetMeterProvider();
+  return meter_provider->GetMeter("social_network.user", "1.0.0");
+}
+
 void UserHandler::RegisterUserWithId(
     const int64_t req_id, const std::string &first_name,
     const std::string &last_name, const std::string &username,
     const std::string &password, const int64_t user_id,
     const std::map<std::string, std::string> &carrier) {
+
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("register_user_with_id.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("register_user_with_id.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "RegisterUserWithId"},
+      {"app", "UserService"}
+  });
+  // ----- Metrics -----
+
   // Initialize a span
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
@@ -228,6 +248,17 @@ void UserHandler::RegisterUserWithId(
   }
 
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "RegisterUserWithId"},
+      {"app", "UserService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
+  
 }
 
 void UserHandler::RegisterUser(
@@ -235,6 +266,20 @@ void UserHandler::RegisterUser(
     const std::string &last_name, const std::string &username,
     const std::string &password,
     const std::map<std::string, std::string> &carrier) {
+
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("register_user.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("register_user.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "RegisterUser"},
+      {"app", "UserService"}
+  });
+  // ----- Metrics -----
+
   // Initialize a span
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
@@ -376,11 +421,36 @@ void UserHandler::RegisterUser(
   }
 
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "RegisterUser"},
+      {"app", "UserService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
+
 }
 
 void UserHandler::ComposeCreatorWithUsername(
     Creator &_return, const int64_t req_id, const std::string &username,
     const std::map<std::string, std::string> &carrier) {
+
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("compose_creator_with_username.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("compose_creator_with_username.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "ComposeCreatorWithUsername"},
+      {"app", "UserService"}
+  });
+  // ----- Metrics -----
+
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
   TextMapWriter writer(writer_text_map);
@@ -534,12 +604,36 @@ void UserHandler::ComposeCreatorWithUsername(
     LOG(warning) << "Failed to pop a client from memcached pool";
   }
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "ComposeCreatorWithUsername"},
+      {"app", "UserService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
 }
 
 void UserHandler::ComposeCreatorWithUserId(
     Creator &_return, int64_t req_id, int64_t user_id,
     const std::string &username,
     const std::map<std::string, std::string> &carrier) {
+
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("compose_creator_with_user_id.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("compose_creator_with_user_id.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "ComposeCreatorWithUserId"},
+      {"app", "UserService"}
+  });
+  // ----- Metrics -----
+
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
   TextMapWriter writer(writer_text_map);
@@ -555,12 +649,37 @@ void UserHandler::ComposeCreatorWithUserId(
   _return = creator;
 
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "ComposeCreatorWithUserId"},
+      {"app", "UserService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
+
 }
 
 void UserHandler::Login(std::string &_return, int64_t req_id,
                         const std::string &username,
                         const std::string &password,
                         const std::map<std::string, std::string> &carrier) {
+  
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("login.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("login.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "Login"},
+      {"app", "UserService"}
+  });
+  // ----- Metrics -----
+
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
   TextMapWriter writer(writer_text_map);
@@ -755,10 +874,35 @@ void UserHandler::Login(std::string &_return, int64_t req_id,
     }
   }
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "Login"},
+      {"app", "UserService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
+
 }
 int64_t UserHandler::GetUserId(
     int64_t req_id, const std::string &username,
     const std::map<std::string, std::string> &carrier) {
+  
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("get_user_id.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("get_user_id.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "GetUserId"},
+      {"app", "UserService"}
+  });
+  // ----- Metrics -----
+
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
   TextMapWriter writer(writer_text_map);
@@ -903,6 +1047,17 @@ int64_t UserHandler::GetUserId(
   }
 
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "GetUserId"},
+      {"app", "UserService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
+
   return user_id;
 }
 

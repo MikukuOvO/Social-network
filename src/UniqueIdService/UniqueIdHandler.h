@@ -59,9 +59,29 @@ UniqueIdHandler::UniqueIdHandler(std::mutex *thread_lock,
   _machine_id = machine_id;
 }
 
+// Get Meter instance from MeterProvider
+opentelemetry::nostd::shared_ptr<opentelemetry::v1::metrics::Meter> GetMeter() {
+  auto meter_provider = opentelemetry::metrics::Provider::GetMeterProvider();
+  return meter_provider->GetMeter("social_network.unique_id", "1.0.0");
+}
+
 int64_t UniqueIdHandler::ComposeUniqueId(
     int64_t req_id, PostType::type post_type,
     const std::map<std::string, std::string> &carrier) {
+
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("compose_unique_id.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("compose_unique_id.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "ComposeUniqueId"},
+      {"app", "UniqueIdService"}
+  });
+  // ----- Metrics -----
+
   // Initialize a span
   TextMapReader reader(carrier);
   std::map<std::string, std::string> writer_text_map;
@@ -106,6 +126,17 @@ int64_t UniqueIdHandler::ComposeUniqueId(
   LOG(debug) << "The post_id of the request " << req_id << " is " << post_id;
 
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "ComposeUniqueId"},
+      {"app", "UniqueIdService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
+
   return post_id;
 }
 

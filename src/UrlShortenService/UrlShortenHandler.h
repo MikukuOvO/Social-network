@@ -66,11 +66,31 @@ std::string UrlShortenHandler::_GenRandomStr(int length) {
   _thread_lock->unlock();
   return return_str;
 }
+
+// Get Meter instance from MeterProvider
+opentelemetry::nostd::shared_ptr<opentelemetry::v1::metrics::Meter> GetMeter() {
+  auto meter_provider = opentelemetry::metrics::Provider::GetMeterProvider();
+  return meter_provider->GetMeter("social_network.url_shorten", "1.0.0");
+}
+
 void UrlShortenHandler::ComposeUrls(
     std::vector<Url> &_return,
     int64_t req_id,
     const std::vector<std::string> &urls,
     const std::map<std::string, std::string> &carrier) {
+
+  // ----- Metrics: start timing and increment counter -----
+  auto meter = GetMeter();
+  // Create (or retrieve) instruments—static so they are created only once.
+  static auto request_counter = meter->CreateUInt64Counter("compose_urls.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("compose_urls.latency_ms");
+
+  auto start_time = std::chrono::steady_clock::now();
+  request_counter->Add(1, {
+      {"operation", "ComposeUrls"},
+      {"app", "UrlShortenService"}
+  });
+  // ----- Metrics -----
 
   // Initialize a span
   TextMapReader reader(carrier);
@@ -164,6 +184,16 @@ void UrlShortenHandler::ComposeUrls(
 
   _return = target_urls;
   span->Finish();
+
+  // ----- Metrics: record latency -----
+  auto end_time = std::chrono::steady_clock::now();
+  double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+  
+  latency_histogram->Record(duration_ms, {
+      {"operation", "ComposeUrls"},
+      {"app", "UrlShortenService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
+  // ----- Metrics -----
 
 }
 

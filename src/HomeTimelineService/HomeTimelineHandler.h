@@ -99,7 +99,7 @@ bool HomeTimelineHandler::IsRedisReplicationEnabled() {
 
 opentelemetry::nostd::shared_ptr<opentelemetry::v1::metrics::Meter> GetMeter() {
   auto meter_provider = opentelemetry::metrics::Provider::GetMeterProvider();
-  return meter_provider->GetMeter("social_network.hometimeline", "1.0.0");
+  return meter_provider->GetMeter("social_network.home_time_line", "1.0.0");
 }
 
 void HomeTimelineHandler::WriteHomeTimeline(
