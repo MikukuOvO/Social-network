@@ -99,7 +99,7 @@ bool HomeTimelineHandler::IsRedisReplicationEnabled() {
 
 opentelemetry::nostd::shared_ptr<opentelemetry::v1::metrics::Meter> GetMeter() {
   auto meter_provider = opentelemetry::metrics::Provider::GetMeterProvider();
-  return meter_provider->GetMeter("social_network.home_time_line", "1.0.0");
+  return meter_provider->GetMeter("social_network.home_timeline", "1.0.0");
 }
 
 void HomeTimelineHandler::WriteHomeTimeline(
@@ -110,11 +110,11 @@ void HomeTimelineHandler::WriteHomeTimeline(
   // ----- Metrics: start timing and increment counter -----
   auto meter = GetMeter();
   // Create (or retrieve) instruments—static so they are created only once.
-  static auto write_request_counter = meter->CreateUInt64Counter("write_home_timeline.requests");
-  static auto write_latency_histogram = meter->CreateDoubleHistogram("write_home_timeline.latency_ms");
+  static auto request_counter = meter->CreateUInt64Counter("write_home_timeline.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("write_home_timeline.latency_ms");
 
   auto start_time = std::chrono::steady_clock::now();
-  write_request_counter->Add(1, {
+  request_counter->Add(1, {
       {"operation", "WriteHomeTimeline"},
       {"app", "HomeTimelineService"}
   });
@@ -233,11 +233,12 @@ void HomeTimelineHandler::WriteHomeTimeline(
   auto end_time = std::chrono::steady_clock::now();
   double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
   
-  write_latency_histogram->Record(duration_ms, {
+  latency_histogram->Record(duration_ms, {
       {"operation", "WriteHomeTimeline"},
       {"app", "HomeTimelineService"}
   }, opentelemetry::context::RuntimeContext::GetCurrent());
   // ----- Metrics -----
+  
 }
 
 
@@ -248,12 +249,14 @@ void HomeTimelineHandler::ReadHomeTimeline(
   // ----- Metrics: start timing and increment counter -----
   auto meter = GetMeter();
   // Create (or retrieve) instruments—static so they are created only once.
-  static auto read_request_counter = meter->CreateUInt64Counter("read_home_timeline.requests");
-  static auto read_latency_histogram = meter->CreateDoubleHistogram("read_home_timeline.latency_ms");
+  static auto request_counter = meter->CreateUInt64Counter("read_home_timeline.requests");
+  static auto latency_histogram = meter->CreateDoubleHistogram("read_home_timeline.latency_ms");
 
   auto start_time = std::chrono::steady_clock::now();
-  read_request_counter->Add(1, {{"operation", "ReadHomeTimeline"}});
-  LOG(warning) << "a new request count!";
+  request_counter->Add(1, {
+      {"operation", "ReadHomeTimeline"},
+      {"app", "HomeTimelineService"}
+  });
   // ----- Metrics -----
 
   // Initialize a span
@@ -323,10 +326,12 @@ void HomeTimelineHandler::ReadHomeTimeline(
   // ----- Metrics: record latency -----
   auto end_time = std::chrono::steady_clock::now();
   double duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-  read_latency_histogram->Record(duration_ms,
-    {{"operation", "ReadHomeTimeline"}},
-    opentelemetry::context::RuntimeContext::GetCurrent());
+  latency_histogram->Record(duration_ms, {
+      {"operation", "ReadHomeTimeline"},
+      {"app", "HomeTimelineService"}
+  }, opentelemetry::context::RuntimeContext::GetCurrent());
   // ----- Metrics -----
+
 }
 
 }  // namespace social_network
