@@ -112,6 +112,7 @@ void HomeTimelineHandler::WriteHomeTimeline(
   // Create (or retrieve) instruments—static so they are created only once.
   static auto request_counter = meter->CreateUInt64Counter("write_home_timeline.requests");
   static auto latency_histogram = meter->CreateDoubleHistogram("write_home_timeline.latency_ms");
+  static auto error_counter = meter->CreateUInt64Counter("write_home_timeline.errors");
 
   auto start_time = std::chrono::steady_clock::now();
   request_counter->Add(1, {
@@ -146,6 +147,10 @@ void HomeTimelineHandler::WriteHomeTimeline(
     social_graph_client->GetFollowers(followers_id, req_id, user_id,
                                       writer_text_map);
   } catch (...) {
+    error_counter->Add(1, {
+        {"operation", "WriteHomeTimeline"},
+        {"app", "HomeTimelineService"}
+    });
     LOG(error) << "Failed to get followers from social-network-service";
     _social_graph_client_pool->Remove(social_graph_client_wrapper);
     throw;
@@ -173,6 +178,10 @@ void HomeTimelineHandler::WriteHomeTimeline(
       try {
         auto replies = pipe.exec();
       } catch (const Error &err) {
+        error_counter->Add(1, {
+            {"operation", "WriteHomeTimeline"},
+            {"app", "HomeTimelineService"}
+        });
         LOG(error) << err.what();
         throw err;
       }
@@ -188,6 +197,10 @@ void HomeTimelineHandler::WriteHomeTimeline(
             auto replies = pipe.exec();
         }
         catch (const Error& err) {
+            error_counter->Add(1, {
+                {"operation", "WriteHomeTimeline"},
+                {"app", "HomeTimelineService"}
+            });
             LOG(error) << err.what();
             throw err;
         }
@@ -222,6 +235,10 @@ void HomeTimelineHandler::WriteHomeTimeline(
         }
 
       } catch (const Error &err) {
+        error_counter->Add(1, {
+            {"operation", "WriteHomeTimeline"},
+            {"app", "HomeTimelineService"}
+        });
         LOG(error) << err.what();
         throw err;
       }
@@ -251,6 +268,7 @@ void HomeTimelineHandler::ReadHomeTimeline(
   // Create (or retrieve) instruments—static so they are created only once.
   static auto request_counter = meter->CreateUInt64Counter("read_home_timeline.requests");
   static auto latency_histogram = meter->CreateDoubleHistogram("read_home_timeline.latency_ms");
+  static auto error_counter = meter->CreateUInt64Counter("read_home_timeline.errors");
 
   auto start_time = std::chrono::steady_clock::now();
   request_counter->Add(1, {
@@ -295,6 +313,10 @@ void HomeTimelineHandler::ReadHomeTimeline(
                                             std::back_inserter(post_ids_str));
     }
   } catch (const Error &err) {
+    error_counter->Add(1, {
+        {"operation", "ReadHomeTimeline"},
+        {"app", "HomeTimelineService"}
+    });
     LOG(error) << err.what();
     throw err;
   }
@@ -316,6 +338,10 @@ void HomeTimelineHandler::ReadHomeTimeline(
   try {
     post_client->ReadPosts(_return, req_id, post_ids, writer_text_map);
   } catch (...) {
+    error_counter->Add(1, {
+        {"operation", "ReadHomeTimeline"},
+        {"app", "HomeTimelineService"}
+    });
     _post_client_pool->Remove(post_client_wrapper);
     LOG(error) << "Failed to read posts from post-storage-service";
     throw;
